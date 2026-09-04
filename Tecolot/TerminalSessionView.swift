@@ -511,10 +511,6 @@ final class TerminalSessionController: NSObject, LocalProcessTerminalViewDelegat
             return false
         }
 
-        if profile.hidePointerWhileTyping {
-            NSCursor.setHiddenUntilMouseMoves(true)
-        }
-
         let key = normalizedKey(for: event)
         let modifiers = terminalModifiers(for: event.modifierFlags)
         guard let keyBinding = profile.keyBindings.first(where: {

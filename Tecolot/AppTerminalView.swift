@@ -3,9 +3,26 @@
 //  Tecolot
 //
 
+import AppKit
 import Foundation
 import os
 import SwiftTerm
+
+func shouldHidePointerWhileTyping(
+    enabled: Bool,
+    insertedText: Any,
+    eventType: NSEvent.EventType?,
+    isRepeat: Bool
+) -> Bool {
+    guard enabled,
+          let text = insertedText as? NSString,
+          text.length > 0,
+          eventType == .keyDown,
+          !isRepeat else {
+        return false
+    }
+    return true
+}
 
 private final class TerminalSessionEventDelivery: Sendable {
     private enum Event: Sendable {
@@ -67,6 +84,21 @@ final class AppTerminalView: LocalProcessTerminalView {
     nonisolated override func bell(source: Terminal) {
         super.bell(source: source)
         eventDelivery.sendBell()
+    }
+
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        let event = NSApp.currentEvent
+        if shouldHidePointerWhileTyping(
+            enabled: sessionController?.profile.hidePointerWhileTyping == true,
+            insertedText: string,
+            eventType: event?.type,
+            isRepeat: event?.isARepeat ?? false
+        ) {
+            // Hide for a non-repeating press that commits UTF-8 text,
+            // not for every control sequence that may be sent to the PTY.
+            NSCursor.setHiddenUntilMouseMoves(true)
+        }
+        super.insertText(string, replacementRange: replacementRange)
     }
 
     /// Uses the current terminal-driver control bytes when SwiftTerm filters
