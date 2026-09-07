@@ -16,7 +16,7 @@ struct SettingsView: View {
     @EnvironmentObject private var profiles: ProfileStore
 
     @State private var destination: SettingsDestination? = .general
-    @State private var activeProfileID: TerminalProfile.ID?
+    @State private var activeProfileID: TerminalProfile.ID = .noProfileID
     @State private var profileErrorMessage: String?
 
     var body: some View {
@@ -70,7 +70,7 @@ struct SettingsView: View {
     }
 
     private var activeProfile: TerminalProfile? {
-        activeProfileID.flatMap { profiles.profile(withID: $0) }
+        profiles.profile(withID: activeProfileID)
     }
 
     @ViewBuilder
@@ -127,11 +127,10 @@ struct SettingsView: View {
     }
 
     private func repairActiveProfileSelection() {
-        if let activeProfileID,
-           profiles.profile(withID: activeProfileID) != nil {
+        if profiles.profile(withID: activeProfileID) != nil {
             return
         }
-        activeProfileID = profiles.profiles.isEmpty ? nil : profiles.defaultProfileID
+        activeProfileID = profiles.profiles.isEmpty ? .noProfileID : profiles.defaultProfileID
     }
 
     private func createProfile() {

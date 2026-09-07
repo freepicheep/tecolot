@@ -123,7 +123,9 @@ public struct TerminalKeyBinding: Identifiable, Codable, Equatable, Sendable {
 }
 
 public struct TerminalProfile: Identifiable, Codable, Equatable, Sendable {
-    public var id: UUID
+    public typealias ID = UUID
+    
+    public var id: ID
     /// Display name, unique within a store
     public var name: String
 
@@ -344,4 +346,16 @@ public struct TerminalProfile: Identifiable, Codable, Equatable, Sendable {
 struct ProfileDocument: Codable {
     var version: Int
     var profile: TerminalProfile
+}
+
+public extension TerminalProfile.ID {
+    /// Dummy UUID to mark the absence of a profile with non-optionals.
+    nonisolated static let noProfileID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000000"
+    )!
+    
+    /// UUID of the default profile.
+    nonisolated static let builtInDefaultProfileID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000001"
+    )!
 }
