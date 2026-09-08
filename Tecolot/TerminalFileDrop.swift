@@ -31,7 +31,11 @@ enum TerminalFileDrop {
         if dialect == .unknown { return fallbackEscapedPath(path) }
 
         let safe = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_-.:")
-        if !path.isEmpty, path.unicodeScalars.allSatisfy({ safe.contains($0) }) {
+        // Nushell expands unquoted components of three or more dots into parent paths.
+        let expandsMultiDots = dialect == .nushell && path.split(separator: "/").contains {
+            $0.count >= 3 && $0.allSatisfy { $0 == "." }
+        }
+        if !path.isEmpty, !expandsMultiDots, path.unicodeScalars.allSatisfy({ safe.contains($0) }) {
             return path
         }
         let quote = dialect == .nushell || dialect == .elvish ? "\"" : "'"

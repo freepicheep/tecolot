@@ -53,6 +53,16 @@ struct TerminalFileDropTests {
         #expect(TerminalFileDrop.shellQuotedPath("a\u{1}fb", dialect: .elvish) == "\"a\\x01fb\"")
     }
 
+    @Test func nushellQuotesMultiDotComponents() {
+        for path in ["/tmp/.../file", "/tmp/..../file", "/tmp/...", ".../file", "..."] {
+            #expect(TerminalFileDrop.shellQuotedPath(path, dialect: .nushell) == "\"" + path + "\"")
+            #expect(TerminalFileDrop.shellQuotedPath(path, dialect: .zsh) == path)
+        }
+        for path in ["/tmp/./file", "/tmp/../file", "/tmp/...file", "/tmp/file...", "/tmp/a...b"] {
+            #expect(TerminalFileDrop.shellQuotedPath(path, dialect: .nushell) == path)
+        }
+    }
+
     @Test func unknownDestinationUsesGhosttyPrintableEscaping() {
         #expect(TerminalFileDrop.shellQuotedPath(
             #"/tmp/ \()[]{}<>"'`!#$&;|*?~=:,é🦉"#, dialect: .unknown
@@ -66,6 +76,7 @@ struct TerminalFileDropTests {
     func shellReceivesExactFilenames(shell: ShellFixture) async throws {
         let paths = [
             "", "/tmp/plain.txt", "/tmp/two words", "/tmp/it's a file",
+            "/tmp/.../file", "/tmp/..../file", "/tmp/...", ".../file", "...",
             #"/tmp/"quotes" and \\slashes\\\'"#,
             #"/tmp/$(echo injected);`echo bad`&|<>*?[]{}!#~"#,
             "/tmp/café 🦉.txt", "/tmp/cafe\u{301} 🦉.txt", "/tmp/中文",
