@@ -70,7 +70,7 @@ public final class ProfileStore: ObservableObject {
     private var storeStateIsReadOnly = false
 
     nonisolated static let documentVersion = 1
-    private nonisolated static let builtInDefaultProfile = TerminalProfile(
+    private static let builtInDefaultProfile = TerminalProfile(
         id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
         name: "Default"
     )
