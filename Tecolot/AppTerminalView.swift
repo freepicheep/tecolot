@@ -87,6 +87,45 @@ final class AppTerminalView: LocalProcessTerminalView {
     }
 
     nonisolated private let eventDelivery = TerminalSessionEventDelivery()
+    var fileDropShellResolver = TerminalShellResolver()
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        registerForDraggedTypes([.fileURL])
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard sender.draggingSourceOperationMask.contains(.copy),
+              TerminalFileDrop.hasFileURLs(in: sender.draggingPasteboard) else { return [] }
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        draggingEntered(sender) == .copy
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard sender.draggingSourceOperationMask.contains(.copy) else { return false }
+        return insertDroppedFiles(from: sender.draggingPasteboard)
+    }
+
+    @discardableResult
+    func insertDroppedFiles(from pasteboard: NSPasteboard) -> Bool {
+        guard TerminalFileDrop.hasFileURLs(in: pasteboard) else { return false }
+        let dialect = fileDropShellResolver.dialect(for: process?.childfd)
+        guard let text = TerminalFileDrop.text(from: pasteboard, dialect: dialect) else { return false }
+        if window?.makeFirstResponder(self) == true {
+            sessionController?.didBecomeFocused()
+        }
+        // Paste semantics let applications recognize dropped image paths and
+        // apply bracketed-paste framing when the application has enabled it.
+        pasteText(text)
+        return true
+    }
 
     nonisolated override func bell(source: Terminal) {
         super.bell(source: source)
