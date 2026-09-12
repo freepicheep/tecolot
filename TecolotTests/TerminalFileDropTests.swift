@@ -72,7 +72,7 @@ struct TerminalFileDropTests {
         ) == ##"/tmp/line\\x0a\\x09\\x0d\\x1b\[201~\\x7f"##)
     }
 
-    @Test(arguments: ShellFixture.allCases)
+    @Test(arguments: ShellFixture.installedCases)
     func shellReceivesExactFilenames(shell: ShellFixture) async throws {
         let paths = [
             "", "/tmp/plain.txt", "/tmp/two words", "/tmp/it's a file",
@@ -86,7 +86,7 @@ struct TerminalFileDropTests {
         try await assertRoundTrip(paths, shell: shell)
     }
 
-    @Test(arguments: ShellFixture.allCases)
+    @Test(arguments: ShellFixture.installedCases)
     func injectionNamesRemainOneArgumentAndCannotCreateAMarker(shell: ShellFixture) async throws {
         // Keep the exact reported filename as its own command: no extra output
         // and exactly one argument are allowed.
@@ -194,7 +194,8 @@ struct TerminalFileDropTests {
         #expect(inspector.descriptors.isEmpty)
     }
 
-    @Test func liveShellSwitchesAndExecUseTheCurrentDialect() async throws {
+    @Test(.enabled(if: ShellFixture.supportsLiveShellSwitchTest))
+    func liveShellSwitchesAndExecUseTheCurrentDialect() async throws {
         let nu = try ShellFixture.nu.executable()
         let elvish = try ShellFixture.elvish.executable()
         let directory = try makeTemporaryDirectory()
@@ -404,6 +405,18 @@ private func makeTemporaryDirectory() throws -> URL {
 enum ShellFixture: String, CaseIterable, Sendable {
     case bash, zsh, fish, nu, elvish
 
+    static var installedCases: [Self] {
+        allCases.filter(\.isInstalled)
+    }
+
+    static var supportsLiveShellSwitchTest: Bool {
+        nu.isInstalled && elvish.isInstalled
+    }
+
+    var isInstalled: Bool {
+        executableURL != nil
+    }
+
     var dialect: TerminalShellDialect {
         switch self {
         case .bash: .bash
@@ -425,12 +438,15 @@ enum ShellFixture: String, CaseIterable, Sendable {
     }
 
     func executable() throws -> URL {
+        try #require(executableURL, "Incomplete validation: required shell \(rawValue) is not installed")
+    }
+
+    private var executableURL: URL? {
         let directories = ["/bin", "/opt/homebrew/bin", "/usr/local/bin",
                            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin").path]
             + (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init)
-        return try #require(directories.map { URL(fileURLWithPath: $0).appendingPathComponent(rawValue) }
-            .first { FileManager.default.isExecutableFile(atPath: $0.path) },
-            "Incomplete validation: required shell \(rawValue) is not installed")
+        return directories.map { URL(fileURLWithPath: $0).appendingPathComponent(rawValue) }
+            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
     }
 
     func run(script: String) async throws -> (status: Int32, stdout: Data, stderr: String) {
