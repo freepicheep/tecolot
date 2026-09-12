@@ -12,7 +12,7 @@ import UniformTypeIdentifiers
 struct ProfilesSettingsView: View {
     @EnvironmentObject private var profiles: ProfileStore
     @EnvironmentObject private var themes: ThemeStore
-    @Binding var activeProfileID: TerminalProfile.ID
+    @Binding var activeProfileID: TerminalProfile.ID?
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var exportDocument: ProfileExportDocument?
@@ -21,7 +21,14 @@ struct ProfilesSettingsView: View {
     @State private var renameText = ""
 
     private var selectedProfile: TerminalProfile? {
-        profiles.profile(withID: activeProfileID)
+        activeProfileID.flatMap { profiles.profile(withID: $0) }
+    }
+
+    private var profileListSelection: Binding<TerminalProfile.ID> {
+        Binding(
+            get: { activeProfileID ?? profiles.defaultProfileID },
+            set: { activeProfileID = $0 }
+        )
     }
 
     var body: some View {
@@ -88,7 +95,7 @@ struct ProfilesSettingsView: View {
 
     private var profileList: some View {
         VStack(spacing: 0) {
-            List(selection: $activeProfileID) {
+            List(selection: profileListSelection) {
                 ForEach(profiles.profiles) { profile in
                     HStack {
                         Text(profile.name)
@@ -115,7 +122,7 @@ struct ProfilesSettingsView: View {
                 } label: {
                     Image(systemName: "minus")
                 }
-                .disabled(profiles.profiles.count <= 1)
+                .disabled(activeProfileID == nil || profiles.profiles.count <= 1)
 
                 Menu {
                     Button("Duplicate", action: duplicateSelectedProfile)
@@ -191,7 +198,7 @@ struct ProfilesSettingsView: View {
     }
 
     private func deleteSelectedProfile() {
-        guard activeProfileID != .noProfileID else { return }
+        guard let activeProfileID else { return }
         do {
             try profiles.delete(activeProfileID)
             self.activeProfileID = profiles.defaultProfileID
@@ -201,7 +208,7 @@ struct ProfilesSettingsView: View {
     }
 
     private func duplicateSelectedProfile() {
-        guard activeProfileID != .noProfileID else { return }
+        guard let activeProfileID else { return }
         do {
             self.activeProfileID = try profiles.duplicate(activeProfileID).id
         } catch {
@@ -229,7 +236,7 @@ struct ProfilesSettingsView: View {
     }
 
     private func setSelectedProfileAsDefault() {
-        guard activeProfileID != .noProfileID else { return }
+        guard let activeProfileID else { return }
         do {
             try profiles.setDefault(activeProfileID)
         } catch {
@@ -244,10 +251,11 @@ struct ProfilesSettingsView: View {
     }
 
     private func repairActiveProfileSelection() {
-        if profiles.profile(withID: activeProfileID) != nil {
+        if let activeProfileID,
+           profiles.profile(withID: activeProfileID) != nil {
             return
         }
-        activeProfileID = profiles.profiles.isEmpty ? .noProfileID : profiles.defaultProfileID
+        activeProfileID = profiles.profiles.isEmpty ? nil : profiles.defaultProfileID
     }
 
     private func uniqueName(basedOn base: String) -> String {
@@ -998,7 +1006,7 @@ struct ProfileExportDocument: FileDocument {
 }
 
 #Preview("Profiles") {
-    @Previewable @State var activeProfileID: TerminalProfile.ID = SettingsPreviewData.profiles.defaultProfileID
+    @Previewable @State var activeProfileID: TerminalProfile.ID? = SettingsPreviewData.profiles.defaultProfileID
 
     ProfilesSettingsView(activeProfileID: $activeProfileID)
         .environmentObject(SettingsPreviewData.profiles)
