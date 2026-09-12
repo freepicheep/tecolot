@@ -24,6 +24,13 @@ struct ProfilesSettingsView: View {
         activeProfileID.flatMap { profiles.profile(withID: $0) }
     }
 
+    private var profileListSelection: Binding<TerminalProfile.ID> {
+        Binding(
+            get: { activeProfileID ?? profiles.defaultProfileID },
+            set: { activeProfileID = $0 }
+        )
+    }
+
     var body: some View {
         Group {
             if profiles.profiles.isEmpty {
@@ -88,7 +95,7 @@ struct ProfilesSettingsView: View {
 
     private var profileList: some View {
         VStack(spacing: 0) {
-            List(selection: $activeProfileID) {
+            List(selection: profileListSelection) {
                 ForEach(profiles.profiles) { profile in
                     HStack {
                         Text(profile.name)
